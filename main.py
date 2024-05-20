@@ -7,18 +7,9 @@ from strategist import Strategist
 operations = TradeOperations('your_db_path.db')
 
 companies = [
-    {'ticker': 'BTC-USD', 'color': 'yellow'},
+    {'ticker': 'BTC-EUR', 'color': 'yellow'},
     {'ticker': 'ETH-USD', 'color': 'yellow'},
-    {'ticker': 'BNB-USD', 'color': 'yellow'},
-    {'ticker': 'XRP-USD', 'color': 'yellow'},
-    {'ticker': 'ADA-USD', 'color': 'yellow'},
-    {'ticker': 'SOL-USD', 'color': 'yellow'},
-    {'ticker': 'DOT-USD', 'color': 'yellow'},
-    {'ticker': 'DOGE-USD', 'color': 'yellow'},
-    {'ticker': 'AVAX-USD', 'color': 'yellow'},
-    {'ticker': 'LTC-USD', 'color': 'yellow'},
-    {'ticker': 'LINK-USD', 'color': 'yellow'},
-    {'ticker': 'MATIC-USD', 'color': 'yellow'}
+    {'ticker': 'TSLA', 'color': 'red'},
 ]
 
 while True:
@@ -26,8 +17,10 @@ while True:
         ticker = company['ticker']
         print(f"========= Short " + colored(ticker, company['color']) + " =========")
         
-        strategist = Strategist(ticker, 'short')
-        advice = strategist.advice()
+        strategist = Strategist(ticker, 'very_short')
+        advice, confidence = strategist.advice()
+        strategist.generate_pdf_report()  # Generate PDF report
+        
         price_one_unit = operations.get_current_price_one_unit(ticker)
         budget = operations.get_budget()
 
