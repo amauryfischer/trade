@@ -3,6 +3,16 @@ import yfinance as yf
 from datetime import datetime
 from termcolor import colored
 
+companies = [
+    {'ticker': 'BTC-EUR', 'color': 'yellow'},
+    {'ticker': 'ETH-EUR', 'color': 'light_magenta'},
+    {'ticker': 'TSLA', 'color': 'red'},
+    {'ticker': 'AAPL', 'color': 'green'},
+    {'ticker': 'AMZN', 'color': 'cyan'},
+    {'ticker': 'GOOGL', 'color': 'white'},
+    {'ticker': 'JPM', 'color': 'light_red'},
+]
+
 class TradeOperations:
     def __init__(self, db_path):
         self.db_path = db_path
@@ -53,7 +63,7 @@ class TradeOperations:
             self.cur.execute('''INSERT INTO transactions (ticker, quantity, price, transaction_type, timestamp) 
                                 VALUES (?, ?, ?, 'buy', ?)''', (ticker, quantity, price, timestamp))
             self.conn.commit()
-            print(colored(f"Bought {quantity} shares of {ticker} at {price} each on {timestamp}. Remaining budget: ${budget}.",'green'))
+            print(colored(f"Bought {quantity} shares of {ticker} at {price} each on {timestamp}. Remaining budget: ${budget}.",'light_green'))
 
         else:
             print("Insufficient funds for this purchase.")
@@ -76,7 +86,7 @@ class TradeOperations:
                                 VALUES (?, ?, ?, 'sell', ?)''', (ticker, quantity, price, timestamp))
             self.conn.commit()
 
-            print(colored(f"Sold {quantity} shares of {ticker} at {price} on {timestamp}. Revenue: ${total_revenue}. Budget: ${self.cur.execute('''SELECT amount FROM budget WHERE id=1''').fetchone()[0]}.",'red'))
+            print(colored(f"Sold {quantity} shares of {ticker} at {price} on {timestamp}. Revenue: ${total_revenue}. Budget: ${self.cur.execute('''SELECT amount FROM budget WHERE id=1''').fetchone()[0]}.",'light_red'))
 
         else:
             print("Not enough shares to sell.")
@@ -90,7 +100,13 @@ class TradeOperations:
         portfolio = self.cur.fetchall()
         print(colored("Portfolio:", 'cyan'))
         for ticker, quantity in portfolio:
-            print(f"{ticker}: {quantity} shares")
+            concerned_color = next((item['color'] for item in companies if item['ticker'] == ticker), None)
+            print(f"{colored(ticker, concerned_color)}: {quantity} shares")
+
+    def sell_full_ticker(self, ticker):
+        self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=?''', (ticker,))
+        quantity = self.cur.fetchone()[0]
+        self.sell(ticker, quantity)
     
     def sell_everything(self):
         self.cur.execute('''SELECT * FROM portfolio''')

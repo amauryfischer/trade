@@ -1,3 +1,4 @@
+
 import time
 from termcolor import colored
 from trade_operations import TradeOperations
@@ -8,8 +9,12 @@ operations = TradeOperations('your_db_path.db')
 
 companies = [
     {'ticker': 'BTC-EUR', 'color': 'yellow'},
-    {'ticker': 'ETH-USD', 'color': 'yellow'},
+    {'ticker': 'ETH-EUR', 'color': 'light_magenta'},
     {'ticker': 'TSLA', 'color': 'red'},
+    {'ticker': 'AAPL', 'color': 'green'},
+    {'ticker': 'AMZN', 'color': 'cyan'},
+    {'ticker': 'GOOGL', 'color': 'white'},
+    {'ticker': 'JPM', 'color': 'light_red'},
 ]
 
 while True:
@@ -19,12 +24,13 @@ while True:
         
         strategist = Strategist(ticker, 'very_short')
         advice, confidence = strategist.advice()
-        strategist.generate_pdf_report()  # Generate PDF report
+        strategist.generate_pdf_report(advice)  # Pass the general advice to the PDF generation method
         
         price_one_unit = operations.get_current_price_one_unit(ticker)
         budget = operations.get_budget()
 
         if advice == "Strong Buy":
+            print(colored(f"Strong Buy for {ticker}", 'green'))
             quantity = budget * 0.04 / price_one_unit
             operations.buy(ticker, quantity)
         elif advice == "Buy":
@@ -33,7 +39,8 @@ while True:
         elif advice == "Sell":
             operations.sell_specific(ticker)
         elif advice == "Strong Sell":
-            operations.sell_everything(ticker)
+            print(colored(f"Strong Sell for {ticker}", 'red'))
+            operations.sell_full_ticker(ticker)
 
     operations.calculate_total_value()
     operations.print_portfolio()

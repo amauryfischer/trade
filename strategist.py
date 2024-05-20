@@ -6,6 +6,7 @@ import numpy as np
 import pdb
 import os
 
+
 class Strategist:
     def __init__(self, ticker, term='short', pivot_type='Traditional', pivot_timeframe='daily'):
         self.ticker = ticker
@@ -16,8 +17,6 @@ class Strategist:
         self.data = yf.Ticker(ticker).history(period=self.period, interval=self.interval)
         self.daily_data = yf.Ticker(ticker).history(period='1d', interval='1m')  # Fetch daily data for pivot points
         self.set_pivot_timeframe_data()
-        print(f"Fetched {len(self.data)} rows of {self.interval} data")
-        print(f"Fetched {len(self.daily_data)} rows of daily data")
 
     def setup_term_parameters(self, term):
         terms = {
@@ -175,19 +174,33 @@ class Strategist:
             return 'Sell', confidence
         return 'Hold', confidence
 
-    def generate_pdf_report(self):
+    def generate_pdf_report(self, general_advice):
         os.makedirs(self.ticker, exist_ok=True)
         pdf_path = f'{self.ticker}/{self.ticker}_strategy_report_{self.term}.pdf'
         recommendations = []
+        current_price = self.data['Close'].iloc[-1]
         with PdfPages(pdf_path) as pdf:
-            for strategy_method in [self.calculate_rsi, self.calculate_macd, self.calculate_moving_averages, self.calculate_bollinger_bands, self.calculate_stochastic_oscillator, self.calculate_pivot_points]:
+            # Plot current price prominently
+            fig, ax = plt.subplots(figsize=(10, 2))
+            ax.text(0.5, 0.7, f'Current Price: ${current_price:.2f}', fontsize=24, ha='center', va='center', fontweight='bold')
+            ax.text(0.5, 0.3, f'General Advice: {general_advice}', fontsize=24, ha='center', va='center', fontweight='bold', color='blue')
+            ax.axis('off')
+            pdf.savefig(fig)
+            plt.close(fig)
+            
+            for strategy_method in [self.calculate_rsi, self.calculate_bollinger_bands, self.calculate_pivot_points]:
                 plt.figure(figsize=(10, 5))
                 strategy_method()
                 advice, reason = self.advice_for_method(strategy_method.__name__)
-                recommendations.append((strategy_method.__name__.replace('calculate_', '').replace('_', ' ').title(), advice, reason))
+                recommendations.append((strategy_method.__name__.replace('calculate_', '').replace('_', ' ').title(), advice, reason, current_price))
                 self.plot(strategy_method.__name__)
                 pdf.savefig()
                 plt.close()
+            # no plot only recommandations
+            for strategy_method in [self.calculate_macd, self.calculate_moving_averages, self.calculate_stochastic_oscillator]:
+                advice, reason = self.advice_for_method(strategy_method.__name__)
+                recommendations.append((strategy_method.__name__.replace('calculate_', '').replace('_', ' ').title(), advice, reason, current_price))
+                
             self.add_recommendations_table(pdf, recommendations)
             self.add_pivot_points_table(pdf)  # Add pivot points after recommendations table
 
@@ -260,7 +273,7 @@ class Strategist:
         fig, ax = plt.subplots(figsize=(10, 2))
         ax.axis('tight')
         ax.axis('off')
-        table = ax.table(cellText=recommendations, colLabels=['Strategy', 'Advice', 'Reason'], cellLoc='center', loc='center')
+        table = ax.table(cellText=recommendations, colLabels=['Strategy', 'Advice', 'Reason', 'Current Value'], cellLoc='center', loc='center')
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.auto_set_column_width(col=list(range(len(recommendations[0]))))
