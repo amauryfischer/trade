@@ -3,6 +3,7 @@ import yfinance as yf
 from datetime import datetime
 from termcolor import colored
 from prettytable import PrettyTable
+import pdb
 
 companies = [
     {'ticker': 'BTC-EUR', 'color': 'yellow'},
@@ -17,7 +18,8 @@ class TradeOperations:
         self.conn = sqlite3.connect(db_path)
         self.cur = self.conn.cursor()
         self.cur.execute('''CREATE TABLE IF NOT EXISTS portfolio (
-                            ticker TEXT PRIMARY KEY, 
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            ticker TEXT, 
                             quantity INTEGER,
                             bought_price REAL,
                             stop_loss REAL,
@@ -35,7 +37,8 @@ class TradeOperations:
                             timestamp TEXT,
                             leverage REAL)''')
         self.cur.execute('''CREATE TABLE IF NOT EXISTS short_positions (
-                            ticker TEXT PRIMARY KEY, 
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            ticker TEXT, 
                             quantity INTEGER,
                             leverage REAL,
                             stop_loss REAL,
@@ -61,20 +64,9 @@ class TradeOperations:
             budget -= total_cost
             self.cur.execute('''UPDATE budget SET amount=? WHERE id=1''', (budget,))
             
-            self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=?''', (ticker,))
-            result = self.cur.fetchone()
-            if result:
-                self.cur.execute('''UPDATE portfolio SET 
-                                    quantity=quantity + ?, 
-                                    stop_loss=?, 
-                                    take_profit=?, 
-                                    leverage=?, 
-                                    bought_price=? 
-                                    WHERE ticker=?''', (quantity, stop_loss, take_profit, leverage, price, ticker))
-            else:
-                self.cur.execute('''INSERT INTO portfolio 
-                                    (ticker, quantity, bought_price, stop_loss, take_profit, leverage) 
-                                    VALUES (?, ?, ?, ?, ?, ?)''', (ticker, quantity, price, stop_loss, take_profit, leverage))
+            self.cur.execute('''INSERT INTO portfolio 
+                                (ticker, quantity, bought_price, stop_loss, take_profit, leverage) 
+                                VALUES (?, ?, ?, ?, ?, ?)''', (ticker, quantity, price, stop_loss, take_profit, leverage))
             
             # Record the transaction
             self.cur.execute('''INSERT INTO transactions 
@@ -97,9 +89,13 @@ class TradeOperations:
             leverage = result[1]
             bought_price = result[2]
 
-            gain = (price - bought_price) * quantity
-            total_revenue = bought_price * quantity + leverage * gain
-            self.cur.execute('''UPDATE portfolio SET quantity=quantity - ? WHERE ticker=?''', (quantity, ticker))
+            gain = (price - bought_price) * quantity * leverage
+            total_revenue = bought_price * quantity + gain
+            self.cur.execute('''UPDATE portfolio SET quantity=quantity - ? WHERE ticker=? AND quantity=?''', (quantity, ticker, quantity))
+            new_quantity = self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=? AND quantity=?''', (ticker, quantity)).fetchone()[0]
+            if new_quantity == 0:
+                self.cur.execute('''DELETE FROM portfolio WHERE ticker=? AND quantity=?''', (ticker, quantity))
+            
             self.cur.execute('''UPDATE budget SET amount=amount + ? WHERE id=1''', (total_revenue,))
             
             # Record the transaction
@@ -128,22 +124,16 @@ class TradeOperations:
         self.cur.execute('''INSERT INTO transactions 
                             (ticker, quantity, price, transaction_type, timestamp, leverage) 
                             VALUES (?, ?, ?, 'short', ?, ?)''', (ticker, quantity, price, timestamp, leverage))
+        
+        self.cur.execute('''UPDATE budget SET amount=amount - ? WHERE id=1''', (total_revenue,))
+        
         self.conn.commit()
         
-        self.cur.execute('''SELECT quantity FROM short_positions WHERE ticker=?''', (ticker,))
-        result = self.cur.fetchone()
-        if result:
-            self.cur.execute('''UPDATE short_positions SET 
-                                quantity=quantity + ?, 
-                                leverage=?, 
-                                stop_loss=?, 
-                                take_profit=? 
-                                WHERE ticker=?''', (quantity, leverage, short_stop_loss, short_take_profit, ticker))
-        else:
-            self.cur.execute('''INSERT INTO short_positions 
-                                (ticker, quantity, leverage, stop_loss, take_profit) 
-                                VALUES (?, ?, ?, ?, ?)''', (ticker, quantity, leverage, short_stop_loss, short_take_profit))
+        self.cur.execute('''INSERT INTO short_positions 
+                            (ticker, quantity, leverage, stop_loss, take_profit) 
+                            VALUES (?, ?, ?, ?, ?)''', (ticker, quantity, leverage, short_stop_loss, short_take_profit))
 
+        self.conn.commit()
         print(colored(f"Shorted {quantity} shares of {ticker} at {price} each on {timestamp}. Remaining budget: ${self.cur.execute('''SELECT amount FROM budget WHERE id=1''').fetchone()[0]}.", 'light_red'))
 
     def buy_short(self, ticker, quantity):
@@ -158,10 +148,13 @@ class TradeOperations:
 
             # Get the initial short price from transactions
             sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
-            gain = (sold_price - price) * quantity
-            total_cost = sold_price * quantity + leverage * gain
+            gain = (sold_price - price) * quantity * leverage
+            total_cost = sold_price * quantity + gain
             self.cur.execute('''UPDATE budget SET amount=amount + ? WHERE id=1''', (total_cost,))
-            self.cur.execute('''UPDATE short_positions SET quantity=quantity - ? WHERE ticker=?''', (quantity, ticker))
+            self.cur.execute('''UPDATE short_positions SET quantity=quantity - ? WHERE ticker=? AND quantity=?''', (quantity, ticker, quantity))
+            new_quantity = self.cur.execute('''SELECT quantity FROM short_positions WHERE ticker=? AND quantity=?''', (ticker, quantity)).fetchone()[0]
+            if new_quantity == 0:
+                self.cur.execute('''DELETE FROM short_positions WHERE ticker=? AND quantity=?''', (ticker, quantity))
             
             # Record the transaction
             self.cur.execute('''INSERT INTO transactions 
@@ -191,17 +184,17 @@ class TradeOperations:
         table_portfolio.field_names = ["Ticker", "Quantity", "Bought Price", "Current Price", "Gain", "Stop-Loss", "Take-Profit", "Leverage"]
         table_short_positions.field_names = ["Ticker", "Quantity", "Shorted Price", "Current Price", "Gain", "Stop-Loss", "Take-Profit", "Leverage"]
 
-        for ticker, quantity, bought_price, stop_loss, take_profit, leverage in portfolio:
+        for id, ticker, quantity, bought_price, stop_loss, take_profit, leverage in portfolio:
             concerned_color = next((item['color'] for item in companies if item['ticker'] == ticker), 'white')
             current_price = self.get_current_price_one_unit(ticker)
-            gain = (current_price - bought_price) * quantity
+            gain = (current_price - bought_price) * quantity * leverage
             table_portfolio.add_row([colored(ticker, concerned_color), quantity, bought_price, current_price, gain, stop_loss, take_profit, leverage])
 
-        for ticker, quantity, leverage, stop_loss, take_profit in short_positions:
+        for id, ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             concerned_color = next((item['color'] for item in companies if item['ticker'] == ticker), 'white')
             current_price = self.get_current_price_one_unit(ticker)
             sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
-            gain = (sold_price - current_price) * quantity
+            gain = (sold_price - current_price) * quantity * leverage
             table_short_positions.add_row([colored(ticker, concerned_color), quantity, sold_price, current_price, gain, stop_loss, take_profit, leverage])
 
         print(colored("Portfolio:", 'cyan', attrs=['bold']))
@@ -214,18 +207,27 @@ class TradeOperations:
         portfolio = self.cur.fetchall()
         self.cur.execute('''SELECT * FROM short_positions''')
         short_positions = self.cur.fetchall()
-        
-        for ticker, quantity, bought_price, stop_loss, take_profit, leverage in portfolio:
+
+        for id, ticker, quantity, bought_price, stop_loss, take_profit, leverage in portfolio:
             current_price = self.get_current_price_one_unit(ticker)
             if current_price >= take_profit or current_price <= stop_loss:
-                print(f"Conditions met for {ticker}: Current price {current_price}, Stop Loss {stop_loss}, Take Profit {take_profit}. Selling {quantity} shares.")
+                gain = (current_price - bought_price) * quantity * leverage
+                gain_percentage = (gain / (bought_price * quantity * leverage)) * 100
+                print(f"Conditions met for {ticker}: Current price {current_price:.2f}, Stop Loss {stop_loss:.2f}, Take Profit {take_profit:.2f}. Selling {quantity} shares.")
+                print(colored(f"Gain: {gain:.2f} ({gain_percentage:.2f}%) with Leverage: {leverage}", 'green' if gain > 0 else 'red'))
                 self.sell(ticker, quantity)
-        
-        for ticker, quantity, leverage, stop_loss, take_profit in short_positions:
+                self.calculate_total_value()
+
+        for id, ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             current_price = self.get_current_price_one_unit(ticker)
+            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
             if current_price <= take_profit or current_price >= stop_loss:
-                print(f"Conditions met for {ticker} (short): Current price {current_price}, Stop Loss {stop_loss}, Take Profit {take_profit}. Buying to cover {quantity} shares.")
+                gain = (sold_price - current_price) * quantity * leverage
+                gain_percentage = (gain / (sold_price * quantity * leverage)) * 100
+                print(f"Conditions met for {ticker} (short): Current price {current_price:.2f}, Stop Loss {stop_loss:.2f}, Take Profit {take_profit:.2f}. Buying to cover {quantity} shares.")
+                print(colored(f"Gain: {gain:.2f} ({gain_percentage:.2f}%) with Leverage: {leverage}", 'green' if gain > 0 else 'red'))
                 self.buy_short(ticker, quantity)
+                self.calculate_total_value()
 
     def sell_full_ticker(self, ticker):
         self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=?''', (ticker,))
@@ -235,11 +237,11 @@ class TradeOperations:
     def sell_everything(self):
         self.cur.execute('''SELECT * FROM portfolio''')
         portfolio = self.cur.fetchall()
-        for ticker, quantity, _, _, _, _ in portfolio:
+        for id, ticker, quantity, _, _, _ in portfolio:
             self.sell(ticker, quantity)
         self.cur.execute('''SELECT * FROM short_positions''')
         short_positions = self.cur.fetchall()
-        for ticker, quantity, _, _, _ in short_positions:
+        for id, ticker, quantity, _, _, _ in short_positions:
             self.buy_short(ticker, quantity)
     
     def sell_specific(self, ticker):
@@ -272,7 +274,6 @@ class TradeOperations:
             # Calculate the gain and add it to the total value
             gain = (price - bought_price) * quantity
             total_value += bought_price * quantity + leverage * gain
-            # print gain and bought price
 
         for ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             # Fetch the current price of each ticker
@@ -282,8 +283,7 @@ class TradeOperations:
             # Get the initial short price from transactions
             sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
             gain = (sold_price - price) * quantity
-            total_value += leverage * gain
-            # print gain and sold price
+            total_value += leverage * gain + sold_price * quantity
 
         print(f"Total portfolio value plus budget: " + colored(total_value, 'cyan', attrs=['bold']))
         return total_value

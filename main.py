@@ -26,7 +26,7 @@ def print_footer():
 
 while True:
     print_header()
-
+    operations.calculate_total_value()
     # Check current portfolio and take necessary actions
     operations.check_portfolio_for_take_profit_or_stop_loss()
 
@@ -40,9 +40,9 @@ while True:
         
         price_one_unit = operations.get_current_price_one_unit(ticker)
         budget = operations.get_budget()
-        leverage = 2.5 if advice in ["Strong Buy", "Strong Sell"] else 1
-        stop_loss = 0.002  # 0.2% stop loss
-        take_profit = 0.005  # 0.5% take profit
+        leverage = 6 if advice in ["Strong Buy", "Strong Sell"] else 3
+        stop_loss = 0.001  # 0.2% stop loss
+        take_profit = 0.002  # 0.5% take profit
 
         if advice == "Strong Buy":
             print(colored(f"Strong Buy for {ticker}", 'green', attrs=['bold']))
