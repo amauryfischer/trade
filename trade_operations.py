@@ -79,7 +79,7 @@ class TradeOperations:
             print("Insufficient funds for this purchase.")
 
     def sell(self, ticker, quantity):
-        self.cur.execute('''SELECT quantity, leverage, bought_price FROM portfolio WHERE ticker=?''', (ticker,))
+        self.cur.execute('''SELECT quantity, leverage, bought_price FROM portfolio WHERE ticker=? AND quantity=?''', (ticker, quantity))
         result = self.cur.fetchone()
 
         if result and result[0] >= quantity:
@@ -92,9 +92,7 @@ class TradeOperations:
             gain = (price - bought_price) * quantity * leverage
             total_revenue = bought_price * quantity + gain
             self.cur.execute('''UPDATE portfolio SET quantity=quantity - ? WHERE ticker=? AND quantity=?''', (quantity, ticker, quantity))
-            new_quantity = self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=? AND quantity=?''', (ticker, quantity)).fetchone()[0]
-            if new_quantity == 0:
-                self.cur.execute('''DELETE FROM portfolio WHERE ticker=? AND quantity=?''', (ticker, quantity))
+            self.cur.execute('''DELETE FROM portfolio WHERE quantity=0''')
             
             self.cur.execute('''UPDATE budget SET amount=amount + ? WHERE id=1''', (total_revenue,))
             
@@ -137,7 +135,7 @@ class TradeOperations:
         print(colored(f"Shorted {quantity} shares of {ticker} at {price} each on {timestamp}. Remaining budget: ${self.cur.execute('''SELECT amount FROM budget WHERE id=1''').fetchone()[0]}.", 'light_red'))
 
     def buy_short(self, ticker, quantity):
-        self.cur.execute('''SELECT quantity, leverage FROM short_positions WHERE ticker=?''', (ticker,))
+        self.cur.execute('''SELECT quantity, leverage FROM short_positions WHERE ticker=? AND quantity=?''', (ticker, quantity))
         result = self.cur.fetchone()
 
         if result and result[0] >= quantity:
@@ -152,9 +150,7 @@ class TradeOperations:
             total_cost = sold_price * quantity + gain
             self.cur.execute('''UPDATE budget SET amount=amount + ? WHERE id=1''', (total_cost,))
             self.cur.execute('''UPDATE short_positions SET quantity=quantity - ? WHERE ticker=? AND quantity=?''', (quantity, ticker, quantity))
-            new_quantity = self.cur.execute('''SELECT quantity FROM short_positions WHERE ticker=? AND quantity=?''', (ticker, quantity)).fetchone()[0]
-            if new_quantity == 0:
-                self.cur.execute('''DELETE FROM short_positions WHERE ticker=? AND quantity=?''', (ticker, quantity))
+            self.cur.execute('''DELETE FROM short_positions WHERE quantity=0''')
             
             # Record the transaction
             self.cur.execute('''INSERT INTO transactions 
