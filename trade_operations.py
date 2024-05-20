@@ -145,7 +145,7 @@ class TradeOperations:
             leverage = result[1]
 
             # Get the initial short price from transactions
-            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
+            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' AND quantity=? ORDER BY timestamp DESC LIMIT 1''', (ticker, quantity)).fetchone()[0]
             gain = (sold_price - price) * quantity * leverage
             total_cost = sold_price * quantity + gain
             self.cur.execute('''UPDATE budget SET amount=amount + ? WHERE id=1''', (total_cost,))
@@ -189,7 +189,7 @@ class TradeOperations:
         for id, ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             concerned_color = next((item['color'] for item in companies if item['ticker'] == ticker), 'white')
             current_price = self.get_current_price_one_unit(ticker)
-            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
+            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' AND quantity=? ORDER BY timestamp DESC LIMIT 1''', (ticker, quantity)).fetchone()[0]
             gain = (sold_price - current_price) * quantity * leverage
             table_short_positions.add_row([colored(ticker, concerned_color), quantity, sold_price, current_price, gain, stop_loss, take_profit, leverage])
 
@@ -216,7 +216,7 @@ class TradeOperations:
 
         for id, ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             current_price = self.get_current_price_one_unit(ticker)
-            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' ORDER BY timestamp DESC LIMIT 1''', (ticker,)).fetchone()[0]
+            sold_price = self.cur.execute('''SELECT price FROM transactions WHERE ticker=? AND transaction_type='short' AND quantity=? ORDER BY timestamp DESC LIMIT 1''', (ticker, quantity)).fetchone()[0]
             if current_price <= take_profit or current_price >= stop_loss:
                 gain = (sold_price - current_price) * quantity * leverage
                 gain_percentage = (gain / (sold_price * quantity * leverage)) * 100
