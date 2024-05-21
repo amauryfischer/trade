@@ -233,7 +233,7 @@ class TradeOperations:
     def sell_everything(self):
         self.cur.execute('''SELECT * FROM portfolio''')
         portfolio = self.cur.fetchall()
-        for id, ticker, quantity, _, _, _ in portfolio:
+        for id, ticker, quantity, _, _, _, _ in portfolio:
             self.sell(ticker, quantity)
         self.cur.execute('''SELECT * FROM short_positions''')
         short_positions = self.cur.fetchall()

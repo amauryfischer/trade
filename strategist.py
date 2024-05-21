@@ -81,7 +81,7 @@ class Strategist:
     def calculate_pivot_points(self):
         max_value = self.pivot_data['High'].max()
         min_value = self.pivot_data['Low'].min()
-        close = self.pivot_data['Close'][0]
+        close = self.pivot_data['Close'].iloc[-1]
         self.pivot_data['Pivot'] = (max_value + min_value + close) / 3
         self.pivot_data['R1'] = 2 * self.pivot_data['Pivot'] - min_value
         self.pivot_data['S1'] = 2 * self.pivot_data['Pivot'] - max_value

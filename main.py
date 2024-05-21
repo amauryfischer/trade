@@ -34,15 +34,15 @@ while True:
         ticker = company['ticker']
         print(f"========= " + colored(ticker, company['color'], attrs=['bold']) + " =========")
         
-        strategist = Strategist(ticker, 'very_short')
+        strategist = Strategist(ticker, 'short')
         advice, confidence = strategist.advice()
         strategist.generate_pdf_report(advice)  # Pass the general advice to the PDF generation method
         
         price_one_unit = operations.get_current_price_one_unit(ticker)
         budget = operations.get_budget()
-        leverage = 6 if advice in ["Strong Buy", "Strong Sell"] else 3
-        stop_loss = 0.001  # 0.2% stop loss
-        take_profit = 0.002  # 0.5% take profit
+        leverage = 3 if advice in ["Strong Buy", "Strong Sell"] else 1
+        stop_loss = 0.002  # 0.2% stop loss
+        take_profit = 0.005  # 0.5% take profit
 
         if advice == "Strong Buy":
             print(colored(f"Strong Buy for {ticker}", 'green', attrs=['bold']))
