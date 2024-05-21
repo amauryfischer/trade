@@ -15,11 +15,15 @@ class RSI:
 
     def analyze(self):
         current_rsi = self.data['RSI'].iloc[-1]
+        
         if current_rsi < 30:
-            return 'Buy', 'RSI is below 30'
+            score = 70 + ((30 - current_rsi) / 30) * 30  # Map 0-30 RSI to 70-100 score
         elif current_rsi > 70:
-            return 'Sell', 'RSI is above 70'
-        return 'Hold', 'RSI is between 30 and 70'
+            score = (100 - current_rsi) / 30 * 30  # Map 70-100 RSI to 0-30 score
+        else:
+            score = 30 + ((current_rsi - 30) / 40) * 40  # Map 30-70 RSI to 30-70 score
+        
+        return score
 
     def plot(self):
         plt.subplot(2, 1, 1)

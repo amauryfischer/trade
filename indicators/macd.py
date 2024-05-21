@@ -15,13 +15,17 @@ class MACD:
         return self.data
 
     def analyze(self):
-        macd_above_signal = self.data['MACD'].iloc[-1] > self.data['Signal Line'].iloc[-1]
-        macd_crossed_above = self.data['MACD'].iloc[-2] <= self.data['Signal Line'].iloc[-2]
-        if macd_above_signal and macd_crossed_above:
-            return 'Buy', 'MACD crossed above Signal Line'
-        elif not macd_above_signal and not macd_crossed_above:
-            return 'Sell', 'MACD crossed below Signal Line'
-        return 'Hold', 'No significant crossover'
+        macd = self.data['MACD'].iloc[-1]
+        signal = self.data['Signal Line'].iloc[-1]
+        difference = macd - signal
+        
+        # Determine the score based on the difference
+        if difference > 0:
+            score = min(100, 50 + (difference / signal) * 50)  # Cap the score at 100
+        else:
+            score = max(0, 50 + (difference / signal) * 50)  # Cap the score at 0
+
+        return score
 
     def plot(self):
         plt.plot(self.data['MACD'], label='MACD', color='blue')

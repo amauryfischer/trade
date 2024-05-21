@@ -15,12 +15,17 @@ class MovingAverage:
         return self.data
 
     def analyze(self):
-        latest_position = self.data['positions'].iloc[-1]
-        if latest_position == 1:
-            return 'Buy', 'Short MA crossed above Long MA'
-        elif latest_position == -1:
-            return 'Sell', 'Short MA crossed below Long MA'
-        return 'Hold', 'No significant crossover'
+        short_mavg = self.data['short_mavg'].iloc[-1]
+        long_mavg = self.data['long_mavg'].iloc[-1]
+        difference = short_mavg - long_mavg
+        
+        # Determine the score based on the difference
+        if difference > 0:
+            score = min(100, 50 + (difference / long_mavg) * 50)  # Cap the score at 100
+        else:
+            score = max(0, 50 + (difference / long_mavg) * 50)  # Cap the score at 0
+
+        return score
 
     def plot(self):
         plt.plot(self.data['Close'], label='Close Price')

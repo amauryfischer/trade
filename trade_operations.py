@@ -212,7 +212,6 @@ class TradeOperations:
                 print(f"Conditions met for {ticker}: Current price {current_price:.2f}, Stop Loss {stop_loss:.2f}, Take Profit {take_profit:.2f}. Selling {quantity} shares.")
                 print(colored(f"Gain: {gain:.2f} ({gain_percentage:.2f}%) with Leverage: {leverage}", 'green' if gain > 0 else 'red'))
                 self.sell(ticker, quantity)
-                self.calculate_total_value()
 
         for id, ticker, quantity, leverage, stop_loss, take_profit in short_positions:
             current_price = self.get_current_price_one_unit(ticker)
@@ -223,7 +222,6 @@ class TradeOperations:
                 print(f"Conditions met for {ticker} (short): Current price {current_price:.2f}, Stop Loss {stop_loss:.2f}, Take Profit {take_profit:.2f}. Buying to cover {quantity} shares.")
                 print(colored(f"Gain: {gain:.2f} ({gain_percentage:.2f}%) with Leverage: {leverage}", 'green' if gain > 0 else 'red'))
                 self.buy_short(ticker, quantity)
-                self.calculate_total_value()
 
     def sell_full_ticker(self, ticker):
         self.cur.execute('''SELECT quantity FROM portfolio WHERE ticker=?''', (ticker,))

@@ -13,15 +13,22 @@ class StochasticOscillator:
         return self.data
 
     def analyze(self):
-        if self.data['%K'].iloc[-1] < 20:
-            return 'Buy', '%K is below 20'
-        elif self.data['%K'].iloc[-1] > 80:
-            return 'Sell', '%K is above 80'
-        return 'Hold', '%K is between 20 and 80'
+        current_k = self.data['%K'].iloc[-1]
+        
+        if current_k < 20:
+            score = 70 + ((20 - current_k) / 20) * 30  # Map 0-20 %K to 70-100 score
+        elif current_k > 80:
+            score = (100 - current_k) / 20 * 30  # Map 80-100 %K to 0-30 score
+        else:
+            score = 30 + ((current_k - 20) / 60) * 40  # Map 20-80 %K to 30-70 score
+        
+        return score
 
     def plot(self):
         plt.plot(self.data['%K'], label='%K', color='blue')
         plt.plot(self.data['%D'], label='%D', color='red')
+        plt.axhline(80, linestyle='--', color='red')
+        plt.axhline(20, linestyle='--', color='green')
         plt.legend()
         plt.title('Stochastic Oscillator')
         plt.tight_layout()

@@ -20,11 +20,31 @@ class PivotPoints:
     def analyze(self):
         close = self.data['Close'].iloc[-1]
         pivot = self.data['Pivot'].iloc[-1]
-        if close > pivot:
-            return 'Buy', 'Price is above the Pivot Point'
+        s3 = self.data['S3'].iloc[-1]
+        s2 = self.data['S2'].iloc[-1]
+        s1 = self.data['S1'].iloc[-1]
+        r1 = self.data['R1'].iloc[-1]
+        r2 = self.data['R2'].iloc[-1]
+        r3 = self.data['R3'].iloc[-1]
+
+        if close < s3:
+            score = 0  # Very strong sell
+        elif close > r3:
+            score = 100  # Very strong buy
+        elif close < s2:
+            score = 30 * (close - s3) / (s2 - s3)  # Map S3-S2 to 0-30
+        elif close < s1:
+            score = 30 + 20 * (close - s2) / (s1 - s2)  # Map S2-S1 to 30-50
         elif close < pivot:
-            return 'Sell', 'Price is below the Pivot Point'
-        return 'Hold', 'Price is around the Pivot Point'
+            score = 50 + 20 * (close - s1) / (pivot - s1)  # Map S1-Pivot to 50-70
+        elif close < r1:
+            score = 70 + 20 * (close - pivot) / (r1 - pivot)  # Map Pivot-R1 to 70-90
+        elif close < r2:
+            score = 90 + 10 * (close - r1) / (r2 - r1)  # Map R1-R2 to 90-100
+        else:
+            score = 100  # Very strong buy
+
+        return score
 
     def plot(self):
         plt.plot(self.data['Close'], label='Close Price')

@@ -11,8 +11,7 @@ companies = [
     {'ticker': 'BTC-EUR', 'color': 'yellow'},
     {'ticker': 'ETH-EUR', 'color': 'light_magenta'},
     {'ticker': 'SOL-EUR', 'color': 'light_cyan'},
-    {'ticker': 'LTC-EUR', 'color': 'light_yellow'},
-    {'ticker': 'TSLA', 'color': 'light_green'}
+    # {'ticker': 'TSLA', 'color': 'light_green'}
 ]
 
 def print_header():
@@ -36,26 +35,46 @@ while True:
         print(f"========= " + colored(ticker, company['color'], attrs=['bold']) + " =========")
         
         strategist = Strategist(ticker, 'short')
-        advice, confidence = strategist.advice()
-        strategist.generate_pdf_report(advice)  # Pass the general advice to the PDF generation method
-        
+        score = strategist.advice()
+        strategist.generate_pdf_report(score)  # Pass the score to the PDF generation method
+
         price_one_unit = operations.get_current_price_one_unit(ticker)
         budget = operations.get_budget()
-        leverage = 3 if advice in ["Strong Buy", "Strong Sell"] else 1
         stop_loss = 0.002  # 0.2% stop loss
         take_profit = 0.005  # 0.5% take profit
 
-        if advice == "Strong Buy":
+        if score > 90:
+            leverage = 3
+            quantity = budget * 0.08 / price_one_unit  # Larger position for very strong signals
+            print(colored(f"Very Strong Buy for {ticker}", 'green', attrs=['bold']))
+            operations.buy(ticker, quantity, price_one_unit * (1 - stop_loss), price_one_unit * (1 + take_profit), leverage)
+        elif score > 80:
+            leverage = 2
+            quantity = budget * 0.05 / price_one_unit
             print(colored(f"Strong Buy for {ticker}", 'green', attrs=['bold']))
-            quantity = budget * 0.04 / price_one_unit  # Leverage should not affect quantity
             operations.buy(ticker, quantity, price_one_unit * (1 - stop_loss), price_one_unit * (1 + take_profit), leverage)
-        elif advice == "Buy":
-            quantity = budget * 0.01 / price_one_unit  # Leverage should not affect quantity
+        elif score > 60:
+            leverage = 1
+            quantity = budget * 0.02 / price_one_unit
+            print(colored(f"Buy for {ticker}", 'green'))
             operations.buy(ticker, quantity, price_one_unit * (1 - stop_loss), price_one_unit * (1 + take_profit), leverage)
-        elif advice in ["Sell", "Strong Sell"]:
-            print(colored(f"{advice} for {ticker}", 'red', attrs=['bold']))
-            quantity = budget * 0.04 / price_one_unit  # Leverage should not affect quantity
+        elif score < 10:
+            leverage = 3
+            quantity = budget * 0.08 / price_one_unit  # Larger position for very strong signals
+            print(colored(f"Very Strong Sell for {ticker}", 'red', attrs=['bold']))
             operations.sell_short(ticker, quantity, leverage, stop_loss, take_profit)
+        elif score < 20:
+            leverage = 2
+            quantity = budget * 0.05 / price_one_unit
+            print(colored(f"Strong Sell for {ticker}", 'red', attrs=['bold']))
+            operations.sell_short(ticker, quantity, leverage, stop_loss, take_profit)
+        elif score < 40:
+            leverage = 1
+            quantity = budget * 0.02 / price_one_unit
+            print(colored(f"Sell for {ticker}", 'red'))
+            operations.sell_short(ticker, quantity, leverage, stop_loss, take_profit)
+        else:
+            print(colored(f"Hold for {ticker}", 'yellow'))
 
     operations.calculate_total_value()
     operations.print_portfolio()
