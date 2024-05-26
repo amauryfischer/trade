@@ -27,24 +27,28 @@ class PivotPoints:
         r2 = self.data['R2'].iloc[-1]
         r3 = self.data['R3'].iloc[-1]
 
-        if close < s3:
-            score = 0  # Very strong sell
-        elif close > r3:
-            score = 100  # Very strong buy
-        elif close < s2:
-            score = 30 * (close - s3) / (s2 - s3)  # Map S3-S2 to 0-30
-        elif close < s1:
-            score = 30 + 20 * (close - s2) / (s1 - s2)  # Map S2-S1 to 30-50
-        elif close < pivot:
-            score = 50 + 20 * (close - s1) / (pivot - s1)  # Map S1-Pivot to 50-70
-        elif close < r1:
-            score = 70 + 20 * (close - pivot) / (r1 - pivot)  # Map Pivot-R1 to 70-90
-        elif close < r2:
-            score = 90 + 10 * (close - r1) / (r2 - r1)  # Map R1-R2 to 90-100
+        def linear_interpolate(x, x0, x1, y0, y1):
+            return y0 + (x - x0) * (y1 - y0) / (x1 - x0)
+
+        if close <= s3:
+            score = linear_interpolate(close, s3, s3, 30, 30)  # Close at or below S3, score is 30
+        elif s3 < close <= s2:
+            score = linear_interpolate(close, s3, s2, 30, 50)  # Interpolate between S3 (30) and S2 (50)
+        elif s2 < close <= s1:
+            score = linear_interpolate(close, s2, s1, 50, 70)  # Interpolate between S2 (50) and S1 (70)
+        elif s1 < close <= pivot:
+            score = linear_interpolate(close, s1, pivot, 70, 50)  # Interpolate between S1 (70) and pivot (50)
+        elif pivot < close <= r1:
+            score = linear_interpolate(close, pivot, r1, 50, 70)  # Interpolate between pivot (50) and R1 (70)
+        elif r1 < close <= r2:
+            score = linear_interpolate(close, r1, r2, 70, 90)  # Interpolate between R1 (70) and R2 (90)
+        elif r2 < close <= r3:
+            score = linear_interpolate(close, r2, r3, 90, 100)  # Interpolate between R2 (90) and R3 (100)
         else:
-            score = 100  # Very strong buy
+            score = linear_interpolate(close, r3, r3, 100, 100)  # Close at or above R3, score is 100
 
         return score
+
 
     def plot(self):
         plt.plot(self.data['Close'], label='Close Price')

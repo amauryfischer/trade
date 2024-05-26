@@ -11,7 +11,8 @@ companies = [
     {'ticker': 'BTC-EUR', 'color': 'yellow'},
     {'ticker': 'ETH-EUR', 'color': 'light_magenta'},
     {'ticker': 'SOL-EUR', 'color': 'light_cyan'},
-    # {'ticker': 'TSLA', 'color': 'light_green'}
+    {'ticker': 'DOGE-EUR', 'color': 'dark_grey'},
+    {'ticker': 'LTC-EUR', 'color': 'white'}
 ]
 
 def print_header():

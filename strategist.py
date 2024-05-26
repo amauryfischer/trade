@@ -74,8 +74,29 @@ class Strategist:
         final_score = self.aggregate_scores(ma_score, rsi_score, macd_score, bb_score, so_score, pivot_score)
         return final_score
 
-    def aggregate_scores(self, *scores):
-        average_score = sum(scores) / len(scores)
+    def aggregate_scores(self, ma_score, rsi_score, macd_score, bb_score, so_score, pivot_score):
+        # Define weights for each indicator
+        weights = {
+            'ma': 1,
+            'rsi': 1,
+            'macd': 2,
+            'bb': 1,
+            'so': 0.5,
+            'pivot': 3
+        }
+        
+        # Calculate the weighted average score
+        total_weight = sum(weights.values())
+        weighted_sum = (
+            weights['ma'] * ma_score +
+            weights['rsi'] * rsi_score +
+            weights['macd'] * macd_score +
+            weights['bb'] * bb_score +
+            weights['so'] * so_score +
+            weights['pivot'] * pivot_score
+        )
+        
+        average_score = weighted_sum / total_weight
         return average_score
 
     def generate_pdf_report(self, general_advice):
@@ -114,6 +135,9 @@ class Strategist:
                 (RSI, {'window': self.rsi_window}),
                 (BollingerBands, {'window': 20}),
                 (PivotPoints, {}),
+                (MACD, {'short_span': self.macd_short, 'long_span': self.macd_long, 'signal_span': self.macd_signal}),
+                (MovingAverage, {'short_window': self.short_window, 'long_window': self.long_window}),
+                (StochasticOscillator, {'window': 14})
             ]:
                 indicator = IndicatorClass(self.data, **params)
                 indicator.calculate()

@@ -16,13 +16,20 @@ class StochasticOscillator:
         current_k = self.data['%K'].iloc[-1]
         
         if current_k < 20:
-            score = 70 + ((20 - current_k) / 20) * 30  # Map 0-20 %K to 70-100 score
+            # Linear interpolation from 0 to 20 %K to 70 to 100 score
+            score = 70 + (current_k / 20) * 30
         elif current_k > 80:
-            score = (100 - current_k) / 20 * 30  # Map 80-100 %K to 0-30 score
+            # Linear interpolation from 80 to 100 %K to 30 to 0 score
+            score = 30 * (100 - current_k) / 20
         else:
-            score = 30 + ((current_k - 20) / 60) * 40  # Map 20-80 %K to 30-70 score
+            # Linear interpolation from 20 to 80 %K to 30 to 70 score
+            score = 30 + (current_k - 20) * 40 / 60
+        
+        # Ensure score is within 0-100
+        score = max(0, min(100, score))
         
         return score
+
 
     def plot(self):
         plt.plot(self.data['%K'], label='%K', color='blue')
